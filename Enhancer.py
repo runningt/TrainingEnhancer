@@ -35,8 +35,9 @@ class Enhancer(object):
 
     def _build_request_urls(self):
         shape_list = [{"lat": k[1], "lon": k[0]} for k in self.points.keys()]
-        for l in self._chunks(shape_list, 128:
-            params=urllib.parse.urlencode({'json':json.dumps(shape_list), 'api_key':self.api_key})
+        for l in self._chunks(shape_list, 128):
+            dic = {'shape': l}
+            params=urllib.parse.urlencode({'json':json.dumps(dic), 'api_key':self.api_key})
             yield '{}?{}'.format(self.API_URL,params)
 
     def get_altitudes(self):
