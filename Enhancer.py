@@ -31,13 +31,22 @@ class Enhancer(object):
             longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
             latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
             if longitude is not None and latitude is not None:
-                self.points[(longitude.text, latitude.text)] = None
+                try:
+                    self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] = None
+                except ValueError:
+                    pass
             if max_points and max_points <= len(self.points):
                 self.points = OrderedDict((k, self.points[k]) for k in list(self.points.keys())[0:max_points])
 
     def _chunks(self, _list, n):
         for i in range(0, len(_list), n):
             yield _list[i:i+n]
+
+    def _normalized_float(self, value, round_digits=5):
+        try:
+            return round(float(value), round_digits)
+        except ValueError:
+            return None
 
     def _build_request_urls(self):
         shape_list = [{"lat": k[1], "lon": k[0]} for k in self.points.keys()]
@@ -68,19 +77,19 @@ class Enhancer(object):
                 shape = jsn.get('shape')
                 height = jsn.get('height')
                 if shape and height:
-                    shape_list =[(x.get('lon'), x.get('lat')) for x in shape]
+                    shape_list =[(self._normalized_float(x.get('lon')), self._normalized_float(x.get('lat'))) for x in shape]
                     res = zip(shape_list, height)
                     for p,h in res:
                         self.points[p] = h
 
     def append_altitudes(self):
-        prev = '0'
+        prev = 0
         for p in self.xml_points:
             altitude = ElementTree.Element('AltitudeMeters')
             longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
             latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
-            altitude.text =str(self.points[(longitude.text, latitude.text)] or prev)
-            prev = altitude.text
+            prev = self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] or prev
+            altitude.text = str(prev)
             p.append(altitude)
 
     def write(self):

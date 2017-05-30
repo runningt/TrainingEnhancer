@@ -59,7 +59,7 @@ class TestEnhancer(object):
             enhancer.get_all_points()
         else:
             enhancer.get_all_points(limit)
-        assert enhancer.points =={(str(x),str(x)):None  for x in range(5)}
+        assert enhancer.points =={(x,x):None  for x in range(5)}
         for p in points:
             assert p.find.call_count == 2
             assert p.find.call_args_list == \
@@ -71,10 +71,19 @@ class TestEnhancer(object):
         enhancer.xml_points = points
         enhancer.get_all_points(limit)
         print(enhancer.points)
-        assert enhancer.points =={(str(x),str(x)):None  for x in range(min(5,limit))}
+        assert enhancer.points =={(x, x):None  for x in range(min(5,limit))}
         for p in points[0:min(5,limit)]:
             assert p.find.call_count == 2
             assert p.find.call_args_list == \
                 [call('./tcx:Position/tcx:LongitudeDegrees', enhancer.namespaces),
                     call('./tcx:Position/tcx:LatitudeDegrees', enhancer.namespaces)]
 
+    @pytest.mark.parametrize('value, expected',
+        ((1, 1), ('1', 1), (-1, -1),
+         (1100.23456, 1100.23456),
+         (-1000.123456,-1000.12346),
+         (0.123454,0.12345),
+         ('10.12345', 10.12345),
+         ('100000.123456', 100000.12346)))
+    def test_normalized_float(self, enhancer, value, expected):
+        assert enhancer._normalized_float(value) == expected
