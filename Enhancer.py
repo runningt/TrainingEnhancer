@@ -7,11 +7,13 @@ from collections import OrderedDict
 
 class Enhancer(object):
     namespaces = {'tcx':'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2',
-                  'ae2':'http://www.garmin.com/xmlschemas/ActivityExtension/v2',
+                  'ae':'http://www.garmin.com/xmlschemas/ActivityExtension/v2',
                   '':'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2'}
     API_KEY='XXXXXX'
     API_URL='http://elevation.mapzen.com/height'
     CHUNK_SIZE = 112
+    warning_threshold = 0.25
+    error_threshold = 0.75
 
     def __init__(self,  input, output, api_key=API_KEY, chunk_size = CHUNK_SIZE):
         self.input = input
@@ -20,7 +22,8 @@ class Enhancer(object):
         self.api_key = api_key
         self.chunk_size = chunk_size
         for (k,v) in self.namespaces.items():
-            ElementTree.register_namespace(k,v)
+            if k != 'tcx':
+                ElementTree.register_namespace(k,v)
 
     def parse_xml(self):
         self.etree = ElementTree.parse(self.input)
@@ -81,6 +84,17 @@ class Enhancer(object):
                     res = zip(shape_list, height)
                     for p,h in res:
                         self.points[p] = h
+        self._check_thresholds()
+
+    def _check_thresholds(self):
+        num_points = len(self.points)
+        num_empty = len([x for x in self.points.values() if x is None])
+        empty_fraction = num_empty/num_points
+        if empty_fraction > self.warning_threshold:
+            print('[WARNING]: {} out of {} track points is empty'.format(num_empty, num_points))
+        if empty_fraction > self.error_threshold:
+            print('[ERROR]: {} out of {} track points is empty'.format(num_empty, num_points))
+            raise ValueError('{} out of {} track points is empty'.format(num_empty, num_points))
 
     def append_altitudes(self):
         prev = 0

@@ -26,3 +26,7 @@ In future:
 #### [GPS Exchange Format](https://en.wikipedia.org/wiki/GPS_Exchange_Format)
 
 
+##Usage:
+
+`python3 main.py <INPUT_TCX> <OUTPUT_TCX> <MAPZEN_API_KEY>`
+
