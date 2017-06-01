@@ -88,23 +88,28 @@ class Enhancer(object):
 
     def _check_thresholds(self):
         num_points = len(self.points)
-        num_empty = len([x for x in self.points.values() if x is None])
-        empty_fraction = num_empty/num_points
-        if empty_fraction > self.warning_threshold:
-            print('[WARNING]: {} out of {} track points is empty'.format(num_empty, num_points))
-        if empty_fraction > self.error_threshold:
-            print('[ERROR]: {} out of {} track points is empty'.format(num_empty, num_points))
-            raise ValueError('{} out of {} track points is empty'.format(num_empty, num_points))
+        empty_fraction = 0
+        if num_points > 0:
+            num_empty = len([x for x in self.points.values() if x is None])
+            empty_fraction = num_empty/num_points
+            if self.warning_threshold and empty_fraction > self.warning_threshold:
+                print('[WARNING]: {} out of {} track points is empty'.format(num_empty, num_points))
+            if self.error_threshold and empty_fraction > self.error_threshold:
+                print('[ERROR]: {} out of {} track points is empty'.format(num_empty, num_points))
+                raise ValueError('{} out of {} track points is empty'.format(num_empty, num_points))
+        return empty_fraction
 
     def append_altitudes(self):
-        prev = 0
-        for p in self.xml_points:
-            altitude = ElementTree.Element('AltitudeMeters')
-            longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
-            latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
-            prev = self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] or prev
-            altitude.text = str(prev)
-            p.append(altitude)
+        if len(self.points):
+            prev = 0
+            for p in self.xml_points:
+                altitude = ElementTree.Element('AltitudeMeters')
+                longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
+                latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
+                if latitude and longitude:
+                    prev = self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] or prev
+                altitude.text = str(prev)
+                p.append(altitude)
 
     def write(self):
         self.etree.write(self.output)
