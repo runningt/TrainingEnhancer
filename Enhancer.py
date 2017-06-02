@@ -112,5 +112,7 @@ class Enhancer(object):
                 p.append(altitude)
 
     def write(self):
-        self.etree.write(self.output)
+        #TODO: tags with namespace 'ae' are written as e.g. <ae:TPX>.
+        #Endomondo would prefer <TPX xmlns=...>
+        self.etree.write(self.output, encoding='utf-8', xml_declaration=True, method='xml')
 
