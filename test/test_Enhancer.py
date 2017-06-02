@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch, call
 from Enhancer import Enhancer
-from xml.etree import ElementTree
+from lxml import etree
 
 class TestEnhancer(object):
 
@@ -32,23 +32,21 @@ class TestEnhancer(object):
     def xml_points(self):
         points = []
         for x in range(5):
-            point = Mock(spec=ElementTree.Element)
+            point = Mock(spec=etree.Element)
             text = Mock()
             text.text = str(x)
             point.find = Mock(return_value=text)
             points.append(point)
         return points
 
-
-
     @pytest.fixture
     def mock_etree(self, xml_points):
-        etree = Mock()
-        etree.findall = Mock(return_value=xml_points)
-        return etree
+        etr = Mock(spec=etree)
+        etr.findall = Mock(return_value=xml_points)
+        return etr
 
     def test_parse_xml(self, enhancer, xml_points, mock_etree):
-        with patch.object(ElementTree, 'parse', return_value = mock_etree) as parse_mock:
+        with patch.object(etree, 'parse', return_value = mock_etree) as parse_mock:
             enhancer.parse_xml()
             assert enhancer.xml_points == xml_points
             parse_mock.assert_called_once_with(enhancer.input)

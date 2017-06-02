@@ -1,4 +1,4 @@
-from xml.etree import ElementTree
+from lxml import etree
 import requests
 import urllib
 import json
@@ -7,8 +7,7 @@ from collections import OrderedDict
 
 class Enhancer(object):
     namespaces = {'tcx':'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2',
-                  'ae':'http://www.garmin.com/xmlschemas/ActivityExtension/v2',
-                  '':'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2'}
+                  'ae':'http://www.garmin.com/xmlschemas/ActivityExtension/v2'}
     API_KEY='XXXXXX'
     API_URL='http://elevation.mapzen.com/height'
     CHUNK_SIZE = 112
@@ -21,12 +20,9 @@ class Enhancer(object):
         self.points = OrderedDict()
         self.api_key = api_key
         self.chunk_size = chunk_size
-        for (k,v) in self.namespaces.items():
-            if k != 'tcx':
-                ElementTree.register_namespace(k,v)
 
     def parse_xml(self):
-        self.etree = ElementTree.parse(self.input)
+        self.etree = etree.parse(self.input)
         self.xml_points = self.etree.findall('.//tcx:Trackpoint', self.namespaces)
 
     def get_all_points(self, max_points=0):
@@ -103,16 +99,14 @@ class Enhancer(object):
         if len(self.points):
             prev = 0
             for p in self.xml_points:
-                altitude = ElementTree.Element('AltitudeMeters')
+                altitude = etree.Element('AltitudeMeters')
                 longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
                 latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
-                if latitude and longitude:
+                if latitude is not None and longitude is not None:
                     prev = self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] or prev
                 altitude.text = str(prev)
                 p.append(altitude)
 
     def write(self):
-        #TODO: tags with namespace 'ae' are written as e.g. <ae:TPX>.
-        #Endomondo would prefer <TPX xmlns=...>
         self.etree.write(self.output, encoding='utf-8', xml_declaration=True, method='xml')
 
