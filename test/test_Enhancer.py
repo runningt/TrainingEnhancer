@@ -1,7 +1,11 @@
+import json
+import itertools
 import pytest
+import urllib
+from lxml import etree
 from unittest.mock import Mock, patch, call
 from Enhancer import Enhancer
-from lxml import etree
+
 
 class TestEnhancer(object):
 
@@ -134,4 +138,22 @@ class TestEnhancer(object):
     def test_chunks(self, enhancer, _list, len, expected):
         assert list(enhancer._chunks(_list, len)) == expected
 
+    @pytest.fixture(params=[
+        {(1,1):None, (1,2):None, (1,3):None},
+        {(1.2222,1.2222):None, (1.3333,1.33333):None, (1.9999,1.9999):None},
+        {(1.222222,1.2222222):None, (99999.99999999,99999.999999999):None, (7.7777777,2.2222222):None},
+    ])
+    def points(self, request):
+        return request.param
+
+    @pytest.fixture
+    def shape_json(self, points):
+        return "{{\"shape\": [{{\"lat\": {}, \"lon\": {}}}, {{\"lat\": {}, \"lon\": {}}}, {{\"lat\": {}, \"lon\": {}}}]}}".\
+        format(*itertools.chain(*((y,x) for (x,y) in points.keys())))
+
+    def test_build_request_urls(self, enhancer, points, shape_json, test_key):
+        enhancer.points = points
+        assert list(enhancer._build_request_urls()) == \
+        ['http://elevation.mapzen.com/height?json={}&api_key={}'.\
+        format(urllib.parse.quote_plus(shape_json), test_key)]
 

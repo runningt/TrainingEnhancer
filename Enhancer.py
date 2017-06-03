@@ -48,10 +48,10 @@ class Enhancer(object):
             return None
 
     def _build_request_urls(self):
-        shape_list = [{"lat": k[1], "lon": k[0]} for k in self.points.keys()]
+        shape_list = [OrderedDict([("lat", k[1]),("lon",k[0])]) for k in self.points.keys()]
         for l in self._chunks(shape_list, self.chunk_size):
             dic = {'shape': l}
-            params=urllib.parse.urlencode({'json':json.dumps(dic), 'api_key':self.api_key})
+            params=urllib.parse.urlencode(OrderedDict([('json',json.dumps(dic)), ('api_key',self.api_key)]))
             yield '{}?{}'.format(self.API_URL,params)
 
 
