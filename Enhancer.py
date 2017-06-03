@@ -1,9 +1,9 @@
-from lxml import etree
-import requests
-import urllib
 import json
 import time
+import requests
+import urllib
 from collections import OrderedDict
+from lxml import etree
 
 class Enhancer(object):
     namespaces = {'tcx':'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2',

@@ -1,7 +1,9 @@
-import json
 import itertools
+import json
 import pytest
+import requests
 import urllib
+from collections import OrderedDict
 from lxml import etree
 from unittest.mock import Mock, patch, call
 from Enhancer import Enhancer
@@ -156,4 +158,63 @@ class TestEnhancer(object):
         assert list(enhancer._build_request_urls()) == \
         ['http://elevation.mapzen.com/height?json={}&api_key={}'.\
         format(urllib.parse.quote_plus(shape_json), test_key)]
+
+    @pytest.fixture
+    def points_with_heights(self, points):
+        return OrderedDict(((round(x,5),round(y,5)),round(x,5)) for (x,y) in points.keys())
+
+
+    @pytest.fixture
+    def jsn(self, points_with_heights):
+        jsn = {'shape':[{'lat':y, 'lon':x} for x,y in points_with_heights.keys()],
+               'height':[x for x,y in points_with_heights.keys()]}
+        return jsn
+
+    @pytest.fixture
+    def response(self, jsn):
+        response = Mock(spec=requests.Response)
+        response.json = Mock(return_value=jsn)
+        response.ok = True
+        return response
+
+    @pytest.fixture
+    def err_response(self, response):
+        response.ok = False
+        return response
+
+    @pytest.fixture
+    def wrong_jsn_response(self, points_with_heights):
+        return self.response({'shape':'Wrong Shape', 'height':None})
+
+    @patch.object(Enhancer, '_check_thresholds')
+    def test_get_altitudes(self, check_mock, enhancer, points_with_heights, response):
+        with patch.object(Enhancer, '_get_responses', return_value=[response, response]) as get_resp_mock:
+            enhancer.get_altitudes()
+            assert check_mock.call_count == 1
+            assert get_resp_mock.call_count == 1
+            assert enhancer.points == points_with_heights
+
+    @patch.object(Enhancer, '_check_thresholds')
+    def test_get_altitudes_err_response(self, check_mock, enhancer, err_response):
+        with patch.object(Enhancer, '_get_responses', return_value=[err_response]) as get_resp_mock:
+            enhancer.get_altitudes()
+            assert check_mock.call_count == 1
+            assert get_resp_mock.call_count == 1
+            assert enhancer.points == OrderedDict()
+
+    @patch.object(Enhancer, '_check_thresholds')
+    def test_get_altitudes_wrong_response(self, check_mock, enhancer, wrong_jsn_response):
+        with patch.object(Enhancer, '_get_responses', return_value=[wrong_jsn_response]) as get_resp_mock:
+            enhancer.get_altitudes()
+            assert check_mock.call_count == 1
+            assert get_resp_mock.call_count == 1
+            assert enhancer.points == OrderedDict()
+
+    @patch.object(Enhancer, '_check_thresholds')
+    def test_get_altitudes_no_responses(self, check_mock, enhancer):
+        with patch.object(Enhancer, '_get_responses', return_value=[]) as get_resp_mock:
+            enhancer.get_altitudes()
+            assert check_mock.call_count == 1
+            assert get_resp_mock.call_count == 1
+            assert enhancer.points == OrderedDict()
 
