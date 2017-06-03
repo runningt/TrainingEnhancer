@@ -5,8 +5,10 @@ if [ $# -eq 0 ]
         exit 1
     fi
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-API_KEY=XXXXXXX
+API_KEY=${MAPZEN_API_KEY}
 TTBIN=$1
 BASE=$(basename $TTBIN .ttbin)
-ttbincnv -E -f ${TTBIN}
+if [ ! -f ${BASE}.tcx ] ; then 
+   ttbincnv -E -t ${TTBIN}
+fi
 python3 ${DIR}/main.py ${BASE}.tcx ${BASE}.out.tcx $API_KEY

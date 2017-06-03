@@ -30,6 +30,5 @@ In future:
 
 `python3 main.py <INPUT_TCX> <OUTPUT_TCX> <MAPZEN_API_KEY>`
 
-`postprocess.sh` is a simple bash script that can be specified as a `PostProcessor` in `ttwatch.conf` 
-See [TTWatch config files](https://github.com/ryanbinns/ttwatch#config-files) for more details.
+`postprocess.sh` is a simple bash script that can be specified as a `PostProcessor` in `ttwatch.conf`. See [TTWatch config files](https://github.com/ryanbinns/ttwatch#config-files) for more details.
 
