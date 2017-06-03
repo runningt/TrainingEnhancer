@@ -124,3 +124,14 @@ class TestEnhancer(object):
          ('100000.123456', 100000.12346)))
     def test_normalized_float(self, enhancer, value, expected):
         assert enhancer._normalized_float(value) == expected
+
+    @pytest.mark.parametrize('_list, len, expected',
+        (([1,2,3], 3, [[1,2,3]]),
+         ([1,2,3], 4, [[1,2,3]]),
+         ([1,2,3], 2, [[1,2], [3]]),
+         ([1,2,3], 1, [[1], [2], [3]]),
+         ([1,2,3,4], 2, [[1, 2], [3, 4]])))
+    def test_chunks(self, enhancer, _list, len, expected):
+        assert list(enhancer._chunks(_list, len)) == expected
+
+
