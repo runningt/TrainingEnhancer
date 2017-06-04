@@ -42,6 +42,8 @@ class TestEnhancer(object):
             text = Mock()
             text.text = str(x)
             point.find = Mock(return_value=text)
+            point.val = x
+            point.append = Mock()
             points.append(point)
         return points
 
@@ -218,3 +220,11 @@ class TestEnhancer(object):
             assert get_resp_mock.call_count == 1
             assert enhancer.points == OrderedDict()
 
+    def test_append_altitudes(self, enhancer, xml_points):
+        enhancer.points = OrderedDict((((p.val, p.val),p.val) for p in xml_points))
+        enhancer.xml_points = xml_points
+        enhancer.append_altitudes()
+        for p in enhancer.xml_points:
+            assert p.append.call_count == 1
+            altitude = p.append.call_args_list[0]
+            assert altitude.text ==  str(p.val)
