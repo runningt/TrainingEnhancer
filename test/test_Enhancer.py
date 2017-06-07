@@ -35,7 +35,7 @@ class TestEnhancer(object):
         assert enhancer.chunk_size == Enhancer.CHUNK_SIZE
 
     @pytest.fixture
-    def xml_points(self):
+    def track_points(self):
         points = []
         for x in range(5):
             point = Mock(spec=etree.Element)
@@ -48,39 +48,41 @@ class TestEnhancer(object):
         return points
 
     @pytest.fixture
-    def mock_etree(self, xml_points):
+    def mock_etree(self, track_points):
         etr = Mock(spec=etree)
-        etr.findall = Mock(return_value=xml_points)
+        etr.findall = Mock(return_value=track_points)
         return etr
 
-    def test_parse_xml(self, enhancer, xml_points, mock_etree):
+    def test_parse_xml(self, enhancer, track_points, mock_etree):
         with patch.object(etree, 'parse', return_value = mock_etree) as parse_mock:
             enhancer.parse_xml()
-            assert enhancer.xml_points == xml_points
+            assert enhancer.track_points == track_points
             parse_mock.assert_called_once_with(enhancer.input)
-            mock_etree.findall.assert_called_once_with('.//tcx:Trackpoint', enhancer.namespaces)
+            assert mock_etree.findall.call_count == 2
+            assert mock_etree.findall.call_args_list[1][0] == ('.//tcx:Trackpoint', enhancer.namespaces)
+            assert mock_etree.findall.call_args_list[0][0] == ('.//tcx:Lap', enhancer.namespaces)
 
     @pytest.mark.parametrize('limit', (0, None))
-    def test_get_all_points(self, limit, enhancer, xml_points):
-        enhancer.xml_points = xml_points
+    def test_get_coordinates(self, limit, enhancer, track_points):
+        enhancer.track_points = track_points
         if limit is None:
-            enhancer.get_all_points()
+            enhancer.get_coordinates()
         else:
-            enhancer.get_all_points(limit)
-        assert enhancer.points =={(x,x):None  for x in range(5)}
-        for p in xml_points:
+            enhancer.get_coordinates(limit)
+        assert enhancer.coordinates =={(x,x):None  for x in range(5)}
+        for p in track_points:
             assert p.find.call_count == 2
             assert p.find.call_args_list == \
                 [call('./tcx:Position/tcx:LongitudeDegrees', enhancer.namespaces),
                  call('./tcx:Position/tcx:LatitudeDegrees', enhancer.namespaces)]
 
     @pytest.mark.parametrize('limit', (1,4,5,6))
-    def test_get_all_points_limited(self, limit, enhancer, xml_points):
-        enhancer.xml_points = xml_points
-        enhancer.get_all_points(limit)
-        print(enhancer.points)
-        assert enhancer.points =={(x, x):None  for x in range(min(5,limit))}
-        for p in xml_points[0:min(5,limit)]:
+    def test_get_coordinates_limited(self, limit, enhancer, track_points):
+        enhancer.track_points = track_points
+        enhancer.get_coordinates(limit)
+        print(enhancer.coordinates)
+        assert enhancer.coordinates =={(x, x):None  for x in range(min(5,limit))}
+        for p in track_points[0:min(5,limit)]:
             assert p.find.call_count == 2
             assert p.find.call_args_list == \
                 [call('./tcx:Position/tcx:LongitudeDegrees', enhancer.namespaces),
@@ -95,7 +97,7 @@ class TestEnhancer(object):
      ({(1,1):1, (1,2):1, (1,3):None, (10,10):1}, 0.25, 0.2)
     ))
     def test_check_threshold(self, enhancer, points, expected, warning):
-        enhancer.points = points
+        enhancer.coordinates = points
         enhancer.warning_threshold = warning
         enhancer.error_threshold = 0
         with patch('builtins.print', autospec=True, side_effect=print) as print_mock:
@@ -113,7 +115,7 @@ class TestEnhancer(object):
      {(1,1):1, (1,2):1, (1,3):None, (10,10):1}
     ))
     def test_check_threshold_exception_raised(self, enhancer, points):
-        enhancer.points = points
+        enhancer.coordinates = points
         enhancer.warning_threshold = 0
         enhancer.error_threshold = 0.1
         with patch('builtins.print', autospec=True, side_effect=print) as print_mock:
@@ -156,7 +158,7 @@ class TestEnhancer(object):
         format(*itertools.chain(*((y,x) for (x,y) in points.keys())))
 
     def test_build_request_urls(self, enhancer, points, shape_json, test_key):
-        enhancer.points = points
+        enhancer.coordinates = points
         assert list(enhancer._build_request_urls()) == \
         ['http://elevation.mapzen.com/height?json={}&api_key={}'.\
         format(urllib.parse.quote_plus(shape_json), test_key)]
@@ -194,7 +196,7 @@ class TestEnhancer(object):
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
-            assert enhancer.points == points_with_heights
+            assert enhancer.coordinates == points_with_heights
 
     @patch.object(Enhancer, '_check_thresholds')
     def test_get_altitudes_err_response(self, check_mock, enhancer, err_response):
@@ -202,7 +204,7 @@ class TestEnhancer(object):
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
-            assert enhancer.points == OrderedDict()
+            assert enhancer.coordinates == OrderedDict()
 
     @patch.object(Enhancer, '_check_thresholds')
     def test_get_altitudes_wrong_response(self, check_mock, enhancer, wrong_jsn_response):
@@ -210,7 +212,7 @@ class TestEnhancer(object):
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
-            assert enhancer.points == OrderedDict()
+            assert enhancer.coordinates == OrderedDict()
 
     @patch.object(Enhancer, '_check_thresholds')
     def test_get_altitudes_no_responses(self, check_mock, enhancer):
@@ -218,13 +220,13 @@ class TestEnhancer(object):
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
-            assert enhancer.points == OrderedDict()
+            assert enhancer.coordinates == OrderedDict()
 
-    def test_append_altitudes(self, enhancer, xml_points):
-        enhancer.points = OrderedDict((((p.val, p.val),p.val) for p in xml_points))
-        enhancer.xml_points = xml_points
+    def test_append_altitudes(self, enhancer, track_points):
+        enhancer.coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
+        enhancer.track_points = track_points
         enhancer.append_altitudes()
-        for p in enhancer.xml_points:
+        for p in enhancer.track_points:
             assert p.append.call_count == 1
-            altitude = p.append.call_args_list[0]
+            (altitude,) = p.append.call_args[0]
             assert altitude.text ==  str(p.val)

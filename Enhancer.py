@@ -17,25 +17,26 @@ class Enhancer(object):
     def __init__(self,  input, output, api_key=API_KEY, chunk_size = CHUNK_SIZE):
         self.input = input
         self.output = output
-        self.points = OrderedDict()
+        self.coordinates = OrderedDict()
         self.api_key = api_key
         self.chunk_size = chunk_size
 
     def parse_xml(self):
         self.etree = etree.parse(self.input)
-        self.xml_points = self.etree.findall('.//tcx:Trackpoint', self.namespaces)
+        self.laps = self.etree.findall('.//tcx:Lap', self.namespaces)
+        self.track_points = self.etree.findall('.//tcx:Trackpoint', self.namespaces)
 
-    def get_all_points(self, max_points=0):
-        for p in self.xml_points:
+    def get_coordinates(self, max_points=0):
+        for p in self.track_points:
             longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
             latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
             if longitude is not None and latitude is not None:
                 try:
-                    self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] = None
+                    self.coordinates[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] = None
                 except ValueError:
                     pass
-            if max_points and max_points <= len(self.points):
-                self.points = OrderedDict((k, self.points[k]) for k in list(self.points.keys())[0:max_points])
+            if max_points and max_points <= len(self.coordinates):
+                self.coordinates = OrderedDict((k, self.coordinates[k]) for k in list(self.coordinates.keys())[0:max_points])
 
     def _chunks(self, _list, n):
         for i in range(0, len(_list), n):
@@ -48,7 +49,7 @@ class Enhancer(object):
             return None
 
     def _build_request_urls(self):
-        shape_list = [OrderedDict([("lat", k[1]),("lon",k[0])]) for k in self.points.keys()]
+        shape_list = [OrderedDict([("lat", k[1]),("lon",k[0])]) for k in self.coordinates.keys()]
         for l in self._chunks(shape_list, self.chunk_size):
             dic = {'shape': l}
             params=urllib.parse.urlencode(OrderedDict([('json',json.dumps(dic)), ('api_key',self.api_key)]))
@@ -79,14 +80,14 @@ class Enhancer(object):
                     shape_list =[(self._normalized_float(x.get('lon')), self._normalized_float(x.get('lat'))) for x in shape]
                     res = zip(shape_list, height)
                     for p,h in res:
-                        self.points[p] = h
+                        self.coordinates[p] = h
         self._check_thresholds()
 
     def _check_thresholds(self):
-        num_points = len(self.points)
+        num_points = len(self.coordinates)
         empty_fraction = 0
         if num_points > 0:
-            num_empty = len([x for x in self.points.values() if x is None])
+            num_empty = len([x for x in self.coordinates.values() if x is None])
             empty_fraction = num_empty/num_points
             if self.warning_threshold and empty_fraction > self.warning_threshold:
                 print('[WARNING]: {} out of {} track points is empty'.format(num_empty, num_points))
@@ -96,14 +97,14 @@ class Enhancer(object):
         return empty_fraction
 
     def append_altitudes(self):
-        if len(self.points):
+        if len(self.coordinates):
             prev = 0
-            for p in self.xml_points:
+            for p in self.track_points:
                 altitude = etree.Element('AltitudeMeters')
                 longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
                 latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
                 if latitude is not None and longitude is not None:
-                    prev = self.points[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] or prev
+                    prev = self.coordinates[(self._normalized_float(longitude.text), self._normalized_float(latitude.text))] or prev
                 altitude.text = str(prev)
                 p.append(altitude)
 

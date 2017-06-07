@@ -12,7 +12,7 @@ def main():
     args = parser.parse_args()
     enh = Enhancer.Enhancer(args.input, args.output, args.api_key)
     enh.parse_xml()
-    enh.get_all_points()
+    enh.get_coordinates()
     enh.get_altitudes()
     enh.append_altitudes()
     enh.write()
