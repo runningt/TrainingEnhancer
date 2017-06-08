@@ -6,14 +6,84 @@ import urllib
 from collections import OrderedDict
 from lxml import etree
 from unittest.mock import Mock, patch, call
-from Enhancer import Enhancer
+from Enhancer import Enhancer, TCXDocument, _normalized_float
 
+
+@pytest.fixture
+def track_points():
+    points = []
+    for x in range(5):
+        point = Mock(spec=etree.Element)
+        text = Mock()
+        text.text = str(x)
+        point.find = Mock(return_value=text)
+        point.val = x
+        point.append = Mock()
+        points.append(point)
+    return points
+
+@pytest.fixture
+def mock_etree(track_points):
+    etr = Mock(spec=etree)
+    etr.findall = Mock(return_value=track_points)
+    return etr
+
+@pytest.fixture
+def test_input():
+    return 'test_input.xml'
+
+class TestTCXDocument(object):
+    @pytest.fixture
+    def document(self):
+        return TCXDocument()
+
+    def test_parse(self, document, test_input, track_points, mock_etree):
+        with patch.object(etree, 'parse', return_value = mock_etree) as parse_mock:
+            document.parse(test_input)
+            assert document.track_points == track_points
+            parse_mock.assert_called_once_with(test_input)
+            assert mock_etree.findall.call_count == 2
+            assert mock_etree.findall.call_args_list[1][0] == ('.//tcx:Trackpoint', document.namespaces)
+            assert mock_etree.findall.call_args_list[0][0] == ('.//tcx:Lap', document.namespaces)
+
+    @pytest.mark.parametrize('limit', (0, None))
+    def test_get_coordinates(self, limit, document, track_points):
+        document.track_points = track_points
+        if limit is None:
+            document.get_coordinates()
+        else:
+            document.get_coordinates(limit)
+        assert document.coordinates =={(x,x):None  for x in range(5)}
+        for p in track_points:
+            assert p.find.call_count == 2
+            assert p.find.call_args_list == \
+                [call('./tcx:Position/tcx:LongitudeDegrees', document.namespaces),
+                 call('./tcx:Position/tcx:LatitudeDegrees', document.namespaces)]
+
+    @pytest.mark.parametrize('limit', (1,4,5,6))
+    def test_get_coordinates_limited(self, limit, document, track_points):
+        document.track_points = track_points
+        document.get_coordinates(limit)
+        print(document.coordinates)
+        assert document.coordinates =={(x, x):None  for x in range(min(5,limit))}
+        for p in track_points[0:min(5,limit)]:
+            assert p.find.call_count == 2
+            assert p.find.call_args_list == \
+                [call('./tcx:Position/tcx:LongitudeDegrees', document.namespaces),
+                    call('./tcx:Position/tcx:LatitudeDegrees', document.namespaces)]
 
 class TestEnhancer(object):
 
-    @pytest.fixture
-    def test_input(self):
-        return 'test_input.xml'
+    @pytest.mark.parametrize('value, expected',
+        ((1, 1), ('1', 1), (-1, -1),
+         (1100.23456, 1100.23456),
+         (-1000.123456,-1000.12346),
+         (0.123454,0.12345),
+         ('10.12345', 10.12345),
+         ('100000.123456', 100000.12346)))
+    def test_normalized_float(self, value, expected):
+        assert _normalized_float(value) == expected
+
 
     @pytest.fixture
     def test_output(self):
@@ -33,60 +103,17 @@ class TestEnhancer(object):
         assert enhancer.output == test_output
         assert enhancer.api_key == test_key
         assert enhancer.chunk_size == Enhancer.CHUNK_SIZE
+        assert type(enhancer.document) == TCXDocument
+        assert type(enhancer.coordinates) == OrderedDict
 
-    @pytest.fixture
-    def track_points(self):
-        points = []
-        for x in range(5):
-            point = Mock(spec=etree.Element)
-            text = Mock()
-            text.text = str(x)
-            point.find = Mock(return_value=text)
-            point.val = x
-            point.append = Mock()
-            points.append(point)
-        return points
 
-    @pytest.fixture
-    def mock_etree(self, track_points):
-        etr = Mock(spec=etree)
-        etr.findall = Mock(return_value=track_points)
-        return etr
-
-    def test_parse_xml(self, enhancer, track_points, mock_etree):
-        with patch.object(etree, 'parse', return_value = mock_etree) as parse_mock:
-            enhancer.parse_xml()
-            assert enhancer.track_points == track_points
+    @patch.object(TCXDocument, 'parse')
+    @patch.object(TCXDocument, 'get_coordinates')
+    def test_parse(self, get_coordinates_mock, parse_mock, enhancer, track_points, mock_etree):
+            enhancer.parse()
             parse_mock.assert_called_once_with(enhancer.input)
-            assert mock_etree.findall.call_count == 2
-            assert mock_etree.findall.call_args_list[1][0] == ('.//tcx:Trackpoint', enhancer.namespaces)
-            assert mock_etree.findall.call_args_list[0][0] == ('.//tcx:Lap', enhancer.namespaces)
+            get_coordinates_mock.assert_called_once_with()
 
-    @pytest.mark.parametrize('limit', (0, None))
-    def test_get_coordinates(self, limit, enhancer, track_points):
-        enhancer.track_points = track_points
-        if limit is None:
-            enhancer.get_coordinates()
-        else:
-            enhancer.get_coordinates(limit)
-        assert enhancer.coordinates =={(x,x):None  for x in range(5)}
-        for p in track_points:
-            assert p.find.call_count == 2
-            assert p.find.call_args_list == \
-                [call('./tcx:Position/tcx:LongitudeDegrees', enhancer.namespaces),
-                 call('./tcx:Position/tcx:LatitudeDegrees', enhancer.namespaces)]
-
-    @pytest.mark.parametrize('limit', (1,4,5,6))
-    def test_get_coordinates_limited(self, limit, enhancer, track_points):
-        enhancer.track_points = track_points
-        enhancer.get_coordinates(limit)
-        print(enhancer.coordinates)
-        assert enhancer.coordinates =={(x, x):None  for x in range(min(5,limit))}
-        for p in track_points[0:min(5,limit)]:
-            assert p.find.call_count == 2
-            assert p.find.call_args_list == \
-                [call('./tcx:Position/tcx:LongitudeDegrees', enhancer.namespaces),
-                    call('./tcx:Position/tcx:LatitudeDegrees', enhancer.namespaces)]
 
     @pytest.mark.parametrize('points, expected, warning',
     (({(1,1):1},0,0),
@@ -125,15 +152,6 @@ class TestEnhancer(object):
             assert 'ERROR' in print_mock.call_args[0][0]
 
 
-    @pytest.mark.parametrize('value, expected',
-        ((1, 1), ('1', 1), (-1, -1),
-         (1100.23456, 1100.23456),
-         (-1000.123456,-1000.12346),
-         (0.123454,0.12345),
-         ('10.12345', 10.12345),
-         ('100000.123456', 100000.12346)))
-    def test_normalized_float(self, enhancer, value, expected):
-        assert enhancer._normalized_float(value) == expected
 
     @pytest.mark.parametrize('_list, len, expected',
         (([1,2,3], 3, [[1,2,3]]),
@@ -224,9 +242,9 @@ class TestEnhancer(object):
 
     def test_append_altitudes(self, enhancer, track_points):
         enhancer.coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
-        enhancer.track_points = track_points
+        enhancer.document.track_points = track_points
         enhancer.append_altitudes()
-        for p in enhancer.track_points:
+        for p in enhancer.document.track_points:
             assert p.append.call_count == 1
             (altitude,) = p.append.call_args[0]
             assert altitude.text ==  str(p.val)
