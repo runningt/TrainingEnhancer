@@ -13,7 +13,6 @@ def main():
     enh = Enhancer.Enhancer(args.input, args.output, args.api_key)
     enh.parse()
     enh.get_altitudes()
-    enh.append_altitudes()
     enh.write()
 
 if __name__ == '__main__':

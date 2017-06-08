@@ -72,6 +72,16 @@ class TestTCXDocument(object):
                 [call('./tcx:Position/tcx:LongitudeDegrees', document.namespaces),
                     call('./tcx:Position/tcx:LatitudeDegrees', document.namespaces)]
 
+
+    def test_append_altitudes(self, document, track_points):
+        coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
+        document.track_points = track_points
+        document.append_altitudes(coordinates)
+        for p in document.track_points:
+            assert p.append.call_count == 1
+            (altitude,) = p.append.call_args[0]
+            assert altitude.text ==  str(p.val)
+
 class TestEnhancer(object):
 
     @pytest.mark.parametrize('value, expected',
@@ -95,7 +105,9 @@ class TestEnhancer(object):
 
     @pytest.fixture
     def enhancer(self, test_input, test_output, test_key):
-        return Enhancer(test_input, test_output, test_key)
+        enhancer = Enhancer(test_input, test_output, test_key)
+        enhancer.document = Mock(spec=TCXDocument)
+        return enhancer
 
 
     def test_constructor(self, enhancer, test_input, test_output, test_key):
@@ -103,16 +115,15 @@ class TestEnhancer(object):
         assert enhancer.output == test_output
         assert enhancer.api_key == test_key
         assert enhancer.chunk_size == Enhancer.CHUNK_SIZE
-        assert type(enhancer.document) == TCXDocument
         assert type(enhancer.coordinates) == OrderedDict
 
 
     @patch.object(TCXDocument, 'parse')
     @patch.object(TCXDocument, 'get_coordinates')
     def test_parse(self, get_coordinates_mock, parse_mock, enhancer, track_points, mock_etree):
-            enhancer.parse()
-            parse_mock.assert_called_once_with(enhancer.input)
-            get_coordinates_mock.assert_called_once_with()
+        enhancer.parse()
+        enhancer.document.parse.assert_called_once_with(enhancer.input)
+        enhancer.document.get_coordinates.assert_called_once_with()
 
 
     @pytest.mark.parametrize('points, expected, warning',
@@ -208,43 +219,42 @@ class TestEnhancer(object):
     def wrong_jsn_response(self, points_with_heights):
         return self.response({'shape':'Wrong Shape', 'height':None})
 
-    @patch.object(Enhancer, '_check_thresholds')
+    @patch.object(Enhancer, '_check_thresholds', return_value=0)
     def test_get_altitudes(self, check_mock, enhancer, points_with_heights, response):
         with patch.object(Enhancer, '_get_responses', return_value=[response, response]) as get_resp_mock:
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
             assert enhancer.coordinates == points_with_heights
+            enhancer.document.append_altitudes.assert_called_once_with(points_with_heights)
 
-    @patch.object(Enhancer, '_check_thresholds')
+    @patch.object(Enhancer, '_check_thresholds', return_value=1)
     def test_get_altitudes_err_response(self, check_mock, enhancer, err_response):
         with patch.object(Enhancer, '_get_responses', return_value=[err_response]) as get_resp_mock:
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
             assert enhancer.coordinates == OrderedDict()
+            assert enhancer.document.append_altitudes.call_count == 0
 
-    @patch.object(Enhancer, '_check_thresholds')
+    @patch.object(Enhancer, '_check_thresholds', return_value=1)
     def test_get_altitudes_wrong_response(self, check_mock, enhancer, wrong_jsn_response):
         with patch.object(Enhancer, '_get_responses', return_value=[wrong_jsn_response]) as get_resp_mock:
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
             assert enhancer.coordinates == OrderedDict()
+            assert enhancer.document.append_altitudes.call_count == 0
 
-    @patch.object(Enhancer, '_check_thresholds')
+    @patch.object(Enhancer, '_check_thresholds', return_value=1)
     def test_get_altitudes_no_responses(self, check_mock, enhancer):
         with patch.object(Enhancer, '_get_responses', return_value=[]) as get_resp_mock:
             enhancer.get_altitudes()
             assert check_mock.call_count == 1
             assert get_resp_mock.call_count == 1
             assert enhancer.coordinates == OrderedDict()
+            assert enhancer.document.append_altitudes.call_count == 0
 
-    def test_append_altitudes(self, enhancer, track_points):
-        enhancer.coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
-        enhancer.document.track_points = track_points
-        enhancer.append_altitudes()
-        for p in enhancer.document.track_points:
-            assert p.append.call_count == 1
-            (altitude,) = p.append.call_args[0]
-            assert altitude.text ==  str(p.val)
+
+
+

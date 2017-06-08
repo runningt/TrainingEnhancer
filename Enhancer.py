@@ -48,6 +48,19 @@ class TCXDocument(TrainingDocument):
                     pass
             if max_points and max_points <= len(self.coordinates):
                 self.coordinates = OrderedDict((k, self.coordinates[k]) for k in list(self.coordinates.keys())[0:max_points])
+        return self.coordinates
+
+    def append_altitudes(self, coordinates):
+        if len(coordinates):
+            prev = 0
+            for p in self.track_points:
+                altitude = etree.Element('AltitudeMeters')
+                longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
+                latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
+                if latitude is not None and longitude is not None:
+                    prev = coordinates[(_normalized_float(longitude.text), _normalized_float(latitude.text))] or prev
+                altitude.text = str(prev)
+                p.append(altitude)
 
 
 class Enhancer(object):
@@ -108,7 +121,8 @@ class Enhancer(object):
                     res = zip(shape_list, height)
                     for p,h in res:
                         self.coordinates[p] = h
-        self._check_thresholds()
+        if self._check_thresholds() < self.error_threshold:
+            self.document.append_altitudes(self.coordinates)
 
     def _check_thresholds(self):
         num_points = len(self.coordinates)
@@ -123,17 +137,6 @@ class Enhancer(object):
                 raise ValueError('{} out of {} track points is empty'.format(num_empty, num_points))
         return empty_fraction
 
-    def append_altitudes(self):
-        if len(self.coordinates):
-            prev = 0
-            for p in self.document.track_points:
-                altitude = etree.Element('AltitudeMeters')
-                longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.document.namespaces)
-                latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.document.namespaces)
-                if latitude is not None and longitude is not None:
-                    prev = self.coordinates[(_normalized_float(longitude.text), _normalized_float(latitude.text))] or prev
-                altitude.text = str(prev)
-                p.append(altitude)
 
     def write(self):
         self.document.write(self.output)
