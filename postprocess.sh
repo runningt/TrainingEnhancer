@@ -11,4 +11,6 @@ BASE=$(basename $TTBIN .ttbin)
 if [ ! -f ${BASE}.tcx ] ; then 
    ttbincnv -E -t ${TTBIN}
 fi
-python3 ${DIR}/main.py ${BASE}.tcx ${BASE}.out.tcx $API_KEY
+if [[ $TTBIN == *"Running"* ]]; then
+    python3 ${DIR}/main.py ${BASE}.tcx ${BASE}.out.tcx $API_KEY
+fi
