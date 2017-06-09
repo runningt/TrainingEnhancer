@@ -21,6 +21,24 @@ class TrainingDocument(object):
     def get_coordinates(self, max_points=0):
         raise NotImplemented
 
+    def append_altitudes(self, coordinates):
+        raise NotImplemented
+
+class GPXDocument(TrainingDocument):
+    namespaces = {}
+
+    def parse(self, input):
+        raise NotImplemented
+
+    def write(self, output):
+        raise NotImplemented
+
+    def get_coordinates(self, max_points=0):
+        raise NotImplemented
+
+    def append_altitudes(self, coordinates):
+        raise NotImplemented
+
 class TCXDocument(TrainingDocument):
 
     namespaces = {'tcx':'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2',
