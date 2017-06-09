@@ -28,19 +28,19 @@ class XMLDocument(TrainingDocument):
     def write(self, output):
         self.etree.write(output, encoding='utf-8', xml_declaration=True, method='xml')
 
-class GPXDocument(XMLDocument):
-    namespaces = {'gpx':'http://www.topografix.com/GPX/1/1',
-                  'gpxx':'http://www.garmin.com/xmlschemas/GpxExtensions/v3',
-                  'gpxtpx':'http://www.garmin.com/xmlschemas/TrackPointExtension/v1'}
+    def _get_longitude(self, point):
+        raise NotImplementedError
 
-    def parse(self, input):
-        super().parse(input)
-        self.track_points = self.etree.findall('.//gpx:trkpt', self.namespaces)
+    def _get_latitude(self, point):
+        raise NotImplementedError
+
+    def _create_altitude_elem(self):
+        raise NotImplementedError
 
     def get_coordinates(self, max_points=0):
         for p in self.track_points:
-            longitude = p.attrib.get('lon')
-            latitude = p.attrib.get('lat')
+            longitude = self._get_longitude(p)
+            latitude = self._get_latitude(p)
             if longitude is not None and latitude is not None:
                 try:
                     self.coordinates[(_normalized_float(longitude), _normalized_float(latitude))] = None
@@ -54,13 +54,33 @@ class GPXDocument(XMLDocument):
         if len(coordinates):
             prev = 0
             for p in self.track_points:
-                altitude = etree.Element('ele')
-                longitude = p.attrib.get('lon')
-                latitude = p.attrib.get('lat')
+                altitude_elem = self._create_altitude_elem()
+                longitude = self._get_longitude(p)
+                latitude = self._get_latitude(p)
                 if latitude is not None and longitude is not None:
-                    prev = coordinates[(_normalized_float(longitude), _normalized_float(latitude))] or prev
-                altitude.text = str(prev)
-                p.append(altitude)
+                    prev = coordinates.get((_normalized_float(longitude), _normalized_float(latitude))) or prev
+                altitude_elem.text = str(prev)
+                p.append(altitude_elem)
+
+
+class GPXDocument(XMLDocument):
+    namespaces = {'gpx':'http://www.topografix.com/GPX/1/1',
+                  'gpxx':'http://www.garmin.com/xmlschemas/GpxExtensions/v3',
+                  'gpxtpx':'http://www.garmin.com/xmlschemas/TrackPointExtension/v1'}
+
+    def parse(self, input):
+        super().parse(input)
+        self.track_points = self.etree.findall('.//gpx:trkpt', self.namespaces)
+
+    def _get_longitude(self, point):
+        return point.attrib.get('lon')
+
+    def _get_latitude(self, point):
+        return point.attrib.get('lat')
+
+    def _create_altitude_elem(self):
+        return etree.Element('ele')
+
 
 class TCXDocument(XMLDocument):
 
@@ -72,30 +92,19 @@ class TCXDocument(XMLDocument):
         self.laps = self.etree.findall('.//tcx:Lap', self.namespaces)
         self.track_points = self.etree.findall('.//tcx:Trackpoint', self.namespaces)
 
+    def _get_longitude(self, point):
+        longitude = point.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
+        if longitude is not None:
+            return longitude.text
+        else:
+            return None
 
-    def get_coordinates(self, max_points=0):
-        for p in self.track_points:
-            longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
-            latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
-            if longitude is not None and latitude is not None:
-                try:
-                    self.coordinates[(_normalized_float(longitude.text), _normalized_float(latitude.text))] = None
-                except ValueError:
-                    pass
-            if max_points and max_points <= len(self.coordinates):
-                self.coordinates = OrderedDict((k, self.coordinates[k]) for k in list(self.coordinates.keys())[0:max_points])
-        return self.coordinates
+    def _get_latitude(self, point):
+        latitude = point.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
+        if latitude is not None:
+            return latitude.text
+        else:
+            return None
 
-    def append_altitudes(self, coordinates):
-        if len(coordinates):
-            prev = 0
-            for p in self.track_points:
-                altitude = etree.Element('AltitudeMeters')
-                longitude = p.find('./tcx:Position/tcx:LongitudeDegrees', self.namespaces)
-                latitude = p.find('./tcx:Position/tcx:LatitudeDegrees', self.namespaces)
-                if latitude is not None and longitude is not None:
-                    prev = coordinates[(_normalized_float(longitude.text), _normalized_float(latitude.text))] or prev
-                altitude.text = str(prev)
-                p.append(altitude)
-
-
+    def _create_altitude_elem(self):
+        return etree.Element('AltitudeMeters')

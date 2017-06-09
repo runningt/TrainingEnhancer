@@ -3,8 +3,7 @@ from collections import OrderedDict
 from lxml import etree
 from unittest.mock import patch, call, Mock
 
-
-from TrainingDocument import TCXDocument, GPXDocument
+from TrainingDocument import TCXDocument, GPXDocument, XMLDocument
 
 @pytest.fixture
 def track_points():
@@ -28,6 +27,66 @@ def mock_etree(track_points):
     etr.findall = Mock(return_value=track_points)
     return etr
 
+
+class TestXMLDocument(object):
+    @pytest.fixture
+    def document(self, track_points):
+        document = XMLDocument()
+        document.track_points = track_points
+        return document
+
+    def test_get_coordinates_not_mocked(self, document):
+        with pytest.raises(NotImplementedError):
+            document.get_coordinates()
+
+    def test_append_altitudes_not_mocked(self, document):
+        with pytest.raises(NotImplementedError):
+            document.get_coordinates()
+
+    @pytest.fixture
+    def altitude_elem(self):
+        altitude_elem = Mock()
+        altitude_elem.text = 'altitude_elem'
+        return altitude_elem
+
+    @pytest.fixture
+    def document_mocked(self, document, altitude_elem):
+        document._get_latitude = Mock(side_effect = range(5))
+        document._get_longitude = Mock(side_effect = range(5))
+        document._create_altitude_elem = Mock(return_value = altitude_elem)
+        return document
+
+    @pytest.mark.parametrize('limit', (0, None))
+    def test_get_coordinates(self, limit, document_mocked, track_points):
+        if limit is None:
+            document_mocked.get_coordinates()
+        else:
+            document_mocked.get_coordinates(limit)
+        assert document_mocked.coordinates =={(x,x):None  for x in range(5)}
+        assert document_mocked._get_longitude.call_count == 5
+        assert document_mocked._get_longitude.call_args_list == [call(x) for x in track_points]
+        assert document_mocked._get_latitude.call_count == 5
+        assert document_mocked._get_latitude.call_args_list == [call(x) for x in track_points]
+
+    @pytest.mark.parametrize('limit', (1,4,5,6))
+    def test_get_coordinates_limited(self, limit, document_mocked, track_points):
+        document_mocked.get_coordinates(limit)
+        assert document_mocked.coordinates =={(x, x):None  for x in range(min(5,limit))}
+        assert document_mocked._get_longitude.call_count == 5
+        assert document_mocked._get_longitude.call_args_list == [call(p) for p in track_points]
+        assert document_mocked._get_latitude.call_count == 5
+        assert document_mocked._get_latitude.call_args_list == [call(p) for p in track_points]
+
+    def test_append_altitudes(self, document_mocked, altitude_elem, track_points):
+        coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
+        document_mocked.append_altitudes(coordinates)
+        assert document_mocked._create_altitude_elem.call_count == 5
+        assert document_mocked._get_longitude.call_count == 5
+        assert document_mocked._get_longitude.call_args_list == [call(p) for p in track_points]
+        assert document_mocked._get_latitude.call_count == 5
+        assert document_mocked._get_latitude.call_args_list == [call(p) for p in track_points]
+        for p in track_points:
+            p.append.assert_called_once_with(altitude_elem)
 
 class TestTCXDocument(object):
     @pytest.fixture
