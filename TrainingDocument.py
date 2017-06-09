@@ -43,7 +43,7 @@ class GPXDocument(XMLDocument):
             latitude = p.attrib.get('lat')
             if longitude is not None and latitude is not None:
                 try:
-                    self.coordinates[(_normalized_float(longitude.text), _normalized_float(latitude.text))] = None
+                    self.coordinates[(_normalized_float(longitude), _normalized_float(latitude))] = None
                 except ValueError:
                     pass
             if max_points and max_points <= len(self.coordinates):
@@ -58,7 +58,7 @@ class GPXDocument(XMLDocument):
                 longitude = p.attrib.get('lon')
                 latitude = p.attrib.get('lat')
                 if latitude is not None and longitude is not None:
-                    prev = coordinates[(_normalized_float(longitude.text), _normalized_float(latitude.text))] or prev
+                    prev = coordinates[(_normalized_float(longitude), _normalized_float(latitude))] or prev
                 altitude.text = str(prev)
                 p.append(altitude)
 

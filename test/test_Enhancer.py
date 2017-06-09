@@ -7,10 +7,11 @@ from collections import OrderedDict
 from unittest.mock import Mock, patch, call
 
 from Enhancer import Enhancer
-from TrainingDocument import TCXDocument
+from TrainingDocument import TCXDocument, GPXDocument
 from utils import _normalized_float
 
 class TestUtils(object):
+
     @pytest.mark.parametrize('value, expected',
         ((1, 1), ('1', 1), (-1, -1),
          (1100.23456, 1100.23456),
@@ -21,9 +22,8 @@ class TestUtils(object):
     def test_normalized_float(self, value, expected):
         assert _normalized_float(value) == expected
 
+
 class TestEnhancer(object):
-
-
 
     @pytest.fixture
     def test_output(self):
@@ -39,7 +39,6 @@ class TestEnhancer(object):
         enhancer.document = Mock(spec=TCXDocument)
         return enhancer
 
-
     def test_constructor(self, enhancer, test_input, test_output, test_key):
         assert enhancer.input == test_input
         assert enhancer.output == test_output
@@ -47,6 +46,11 @@ class TestEnhancer(object):
         assert enhancer.chunk_size == Enhancer.CHUNK_SIZE
         assert type(enhancer.coordinates) == OrderedDict
 
+    @pytest.mark.parametrize('format, expected',
+    (('TCX', TCXDocument), ('tcx', TCXDocument), ('other', TCXDocument),
+    ('GPX', GPXDocument), ('gpx',GPXDocument)))
+    def test_document_factory(self, enhancer, format, expected):
+        assert type(enhancer._document_factory(format)) == expected
 
     @patch.object(TCXDocument, 'parse')
     @patch.object(TCXDocument, 'get_coordinates')
@@ -54,7 +58,6 @@ class TestEnhancer(object):
         enhancer.parse()
         enhancer.document.parse.assert_called_once_with(enhancer.input)
         enhancer.document.get_coordinates.assert_called_once_with()
-
 
     @pytest.mark.parametrize('points, expected, warning',
     (({(1,1):1},0,0),
@@ -92,8 +95,6 @@ class TestEnhancer(object):
             assert print_mock.call_count == 1
             assert 'ERROR' in print_mock.call_args[0][0]
 
-
-
     @pytest.mark.parametrize('_list, len, expected',
         (([1,2,3], 3, [[1,2,3]]),
          ([1,2,3], 4, [[1,2,3]]),
@@ -125,7 +126,6 @@ class TestEnhancer(object):
     @pytest.fixture
     def points_with_heights(self, points):
         return OrderedDict(((round(x,5),round(y,5)),round(x,5)) for (x,y) in points.keys())
-
 
     @pytest.fixture
     def jsn(self, points_with_heights):
@@ -184,7 +184,3 @@ class TestEnhancer(object):
             assert get_resp_mock.call_count == 1
             assert enhancer.coordinates == OrderedDict()
             assert enhancer.document.append_altitudes.call_count == 0
-
-
-
-

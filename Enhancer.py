@@ -15,13 +15,20 @@ class Enhancer(object):
     warning_threshold = 0.25
     error_threshold = 0.75
 
-    def __init__(self,  input, output, api_key=API_KEY, chunk_size = CHUNK_SIZE):
+    def __init__(self,  input, output, api_key=API_KEY, format='TCX', chunk_size = CHUNK_SIZE):
         self.input = input
         self.output = output
         self.api_key = api_key
         self.chunk_size = chunk_size
-        self.document = TCXDocument()
+        self.document = self._document_factory(format)
         self.coordinates = OrderedDict()
+
+    def _document_factory(self, format):
+        '''Yes, I do use design patterns :P '''
+        if format.upper() == 'GPX':
+            return GPXDocument()
+        else:
+            return TCXDocument()
 
     def parse(self):
         self.document.parse(self.input)

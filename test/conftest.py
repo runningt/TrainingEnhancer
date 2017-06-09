@@ -17,14 +17,14 @@ def track_points():
         points.append(point)
     return points
 
+
 @pytest.fixture
 def mock_etree(track_points):
     etr = Mock(spec=etree)
     etr.findall = Mock(return_value=track_points)
     return etr
 
+
 @pytest.fixture
 def test_input():
     return 'test_input.xml'
-
-

@@ -5,6 +5,7 @@ from unittest.mock import patch, call
 
 from TrainingDocument import TCXDocument, GPXDocument
 
+
 class TestTCXDocument(object):
     @pytest.fixture
     def document(self):
@@ -44,7 +45,6 @@ class TestTCXDocument(object):
                 [call('./tcx:Position/tcx:LongitudeDegrees', document.namespaces),
                     call('./tcx:Position/tcx:LatitudeDegrees', document.namespaces)]
 
-
     def test_append_altitudes(self, document, track_points):
         coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
         document.track_points = track_points
@@ -52,11 +52,11 @@ class TestTCXDocument(object):
         for p in document.track_points:
             assert p.append.call_count == 1
             (altitude,) = p.append.call_args[0]
-            assert altitude.text ==  str(p.val)
-
+            assert altitude.text == str(p.val)
 
 
 class TestGPXDocument(object):
+
     @pytest.fixture
     def document(self):
         return GPXDocument()
@@ -86,7 +86,6 @@ class TestGPXDocument(object):
         assert document.coordinates =={(x, x):None  for x in range(min(5,limit))}
         for p in track_points[0:min(5,limit)]:
             assert p.attrib.get.call_count == 2
-
 
     def test_append_altitudes(self, document, track_points):
         coordinates = OrderedDict((((p.val, p.val), p.val) for p in track_points))
