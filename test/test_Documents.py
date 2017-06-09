@@ -1,9 +1,32 @@
 import pytest
 from collections import OrderedDict
 from lxml import etree
-from unittest.mock import patch, call
+from unittest.mock import patch, call, Mock
+
 
 from TrainingDocument import TCXDocument, GPXDocument
+
+@pytest.fixture
+def track_points():
+    points = []
+    for x in range(5):
+        point = Mock(spec=etree.Element)
+        text = Mock()
+        text.text = str(x)
+        point.find = Mock(return_value=text)
+        point.val = x
+        point.attrib = Mock()
+        point.attrib.get=Mock(return_value=str(x))
+        point.append = Mock()
+        points.append(point)
+    return points
+
+
+@pytest.fixture
+def mock_etree(track_points):
+    etr = Mock(spec=etree)
+    etr.findall = Mock(return_value=track_points)
+    return etr
 
 
 class TestTCXDocument(object):

@@ -25,13 +25,6 @@ class TestUtils(object):
 
 class TestEnhancer(object):
 
-    @pytest.fixture
-    def test_output(self):
-        return 'test_output.xml'
-
-    @pytest.fixture
-    def test_key(self):
-        return 'test_key'
 
     @pytest.fixture
     def enhancer(self, test_input, test_output, test_key):
@@ -54,7 +47,7 @@ class TestEnhancer(object):
 
     @patch.object(TCXDocument, 'parse')
     @patch.object(TCXDocument, 'get_coordinates')
-    def test_parse(self, get_coordinates_mock, parse_mock, enhancer, track_points, mock_etree):
+    def test_parse(self, get_coordinates_mock, parse_mock, enhancer):
         enhancer.parse()
         enhancer.document.parse.assert_called_once_with(enhancer.input)
         enhancer.document.get_coordinates.assert_called_once_with()
