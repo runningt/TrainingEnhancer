@@ -9,7 +9,8 @@ def main():
     parser.add_argument('input', help = "Name of input TCX/GPX file")
     parser.add_argument('output', help = "Name of output TCX/GPX file")
     parser.add_argument('api_key', help = "Mapzen API Key")
-    parser.add_argument('-f', '--format', choices=['tcx','gpx','TCX','GPX'], default='tcx', help="Input and output file format")
+    parser.add_argument('-f', '--format', choices=['tcx','gpx','TCX','GPX', 'guess'], default='guess', help="Input and output file format. "
+                        "If none, try guessing from extension, or use TCX as fallback")
     args = parser.parse_args()
     enh = Enhancer.Enhancer(args.input, args.output, args.api_key, format=args.format)
     enh.parse()

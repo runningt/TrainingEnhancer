@@ -9,17 +9,18 @@ from utils import _normalized_float
 
 
 class Enhancer(object):
-    API_KEY='XXXXXX'
     API_URL='http://elevation.mapzen.com/height'
     CHUNK_SIZE = 112
     warning_threshold = 0.25
     error_threshold = 0.75
 
-    def __init__(self,  input, output, api_key=API_KEY, format='TCX', chunk_size = CHUNK_SIZE):
+    def __init__(self,  input, output, api_key, format='guess', chunk_size = CHUNK_SIZE):
         self.input = input
         self.output = output
         self.api_key = api_key
         self.chunk_size = chunk_size
+        if format == 'guess':
+            format = self.input.split('.')[-1]
         self.document = self._document_factory(format)
         self.coordinates = OrderedDict()
 
