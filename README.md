@@ -21,10 +21,12 @@ None currently.
 ## Supported formats
 
 #### [Training Center XML](https://en.wikipedia.org/wiki/Training_Center_XML)
-
-In future:
 #### [GPS Exchange Format](https://en.wikipedia.org/wiki/GPS_Exchange_Format)
 
+In future:
+#### [CSV] (https://en.wikipedia.org/wiki/Comma-separated_values)
+
+#### Other...
 
 ## Usage:
 
