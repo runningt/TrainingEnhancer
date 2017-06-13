@@ -12,5 +12,5 @@ if [ ! -f ${BASE}.tcx ] ; then
    ttbincnv -E -t ${TTBIN}
 fi
 if [[ $TTBIN == *"Running"* ]]; then
-    python3 ${DIR}/main.py ${BASE}.tcx ${BASE}.out.tcx $API_KEY
+    python3 ${DIR}/TrainingEnhancer.py ${BASE}.tcx ${BASE}.out.tcx $API_KEY
 fi

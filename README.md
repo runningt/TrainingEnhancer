@@ -7,8 +7,8 @@ When using [Linux TomTom GPS Watch Utilities](https://github.com/ryanbinns/ttwat
 ## External data sources
 ### Altitude Sources 
 #### [Mapzen Elevation Service](https://mapzen.com/documentation/elevation/elevation-service/)
-Please not that in order to use Mapzen API you have to register there and provide your own
-[API Key](https://mapzen.com/documentation/overview/api-keys/) in TrainingEnhancer configuration.
+Please note that in order to use Mapzen API you have to register and provide your own
+[API Key](https://mapzen.com/documentation/overview/api-keys/) as TrainingEnhancer command line parameter.
 
 Prior to use this API, please make sure you have read Mapzen [Terms of Service](https://mapzen.com/terms/)
 
@@ -30,7 +30,7 @@ In future:
 
 ## Usage:
 
-`python3 main.py <INPUT_TCX> <OUTPUT_TCX> <MAPZEN_API_KEY>`
+`python3 TrainingEnhancer.py <INPUT_TCX> <OUTPUT_TCX> <MAPZEN_API_KEY>`
 
 `postprocess.sh` is a simple bash script that can be specified as a `PostProcessor` in `ttwatch.conf`. See [TTWatch config files](https://github.com/ryanbinns/ttwatch#config-files) for more details.
 
